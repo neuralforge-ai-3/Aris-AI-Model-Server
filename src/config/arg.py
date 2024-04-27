@@ -12,9 +12,6 @@ from src.logger import logger
 def parse_args() -> Dict[str, Any]:
     parser = ArgumentParser()
     parser.add_argument("--config_path", "-cp", type=str, help="Path to model config file, in yaml format", required=True)
-
-    parser.add_argument("--use_cache", "-uc", type=bool, help="Use cache", default=False)
-
     args = vars(parser.parse_args())
 
     path = Path(args["config_path"])
@@ -77,8 +74,3 @@ class ModelConfig(BaseModel):
             embedding_configs=embedding_configs,
             reranker_configs=reranker_configs,
         )
-
-
-ARGUMENTS = parse_args()
-
-MODEL_CONFIG = ModelConfig.from_yaml(ARGUMENTS["config_path"])

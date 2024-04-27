@@ -1,0 +1,57 @@
+from os import PathLike
+from typing import Dict
+
+import yaml
+from pydantic import BaseModel
+
+from src.logger import logger
+
+
+class LLMConfig(BaseModel):
+    pass
+
+
+class EmbeddingConfig(BaseModel):
+    alias: str
+    path: str
+    enable_cache: bool
+    batch_size: int
+    max_seq_len: int
+
+
+class RerankerConfig(BaseModel):
+    alias: str
+    path: str
+    batch_size: int
+    max_seq_len: int
+
+
+class ModelConfig(BaseModel):
+    llm_configs: Dict[str, LLMConfig]
+    embedding_configs: Dict[str, EmbeddingConfig]
+    reranker_configs: Dict[str, RerankerConfig]
+
+    @classmethod
+    def from_yaml(cls, path: PathLike) -> "ModelConfig":
+        with open(path, "r") as fp:
+            config = yaml.safe_load(fp)
+
+        llm_configs, embedding_configs, reranker_configs = {}, {}, {}
+
+        for alias, kwargs in config.get("embedding", {}).items():
+            if alias in embedding_configs:
+                logger.error(f"Duplicate embedding alias: {alias}")
+                exit(1)
+            embedding_configs[alias] = EmbeddingConfig(alias=alias, **kwargs)
+
+        for alias, kwargs in config.get("reranker", {}).items():
+            if alias in reranker_configs:
+                logger.error(f"Duplicate reranker alias: {alias}")
+                exit(1)
+            reranker_configs[alias] = RerankerConfig(alias=alias, **kwargs)
+
+        return cls(
+            llm_configs=llm_configs,
+            embedding_configs=embedding_configs,
+            reranker_configs=reranker_configs,
+        )
