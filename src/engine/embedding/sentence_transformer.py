@@ -1,3 +1,4 @@
+import asyncio
 from typing import List
 
 from cachetools import LRUCache
@@ -10,12 +11,12 @@ from src.logger import logger
 from ..base import BaseEngine, EmbeddingResult
 
 
-class EmbeddingEngine(BaseEngine, EmbeddingConfig):
+class SentenceTransformerEmbeddingEngine(BaseEngine, EmbeddingConfig):
     model: SentenceTransformer
     cache: LRUCache | None
 
     @classmethod
-    def from_config(cls, config: EmbeddingConfig) -> "EmbeddingEngine":
+    def from_config(cls, config: EmbeddingConfig) -> "SentenceTransformerEmbeddingEngine":
         model = SentenceTransformer(config.path, device=DEVICE)
         model.max_seq_length = config.max_seq_len
         cache = LRUCache(maxsize=1000) if config.enable_cache else None
@@ -23,7 +24,7 @@ class EmbeddingEngine(BaseEngine, EmbeddingConfig):
         logger.success(f"[EmbeddingEngine] load model from {config.path}")
         return cls(model=model, cache=cache, **config.model_dump())
 
-    def invoke(self, sentences: List[str]) -> List[EmbeddingResult]:
+    def _invoke(self, sentences: List[str]) -> List[EmbeddingResult]:
         not_cached_ids = []
         not_cached_queries = []
         cached_ids = []
@@ -61,5 +62,8 @@ class EmbeddingEngine(BaseEngine, EmbeddingConfig):
 
         return [EmbeddingResult(embedding=embedding, index=i, object="embedding") for i, embedding in enumerate(embeddings)]
 
-    def stream(self, sentences: List[str]) -> List[EmbeddingResult]:
+    async def invoke(self, sentences: List[str]) -> List[EmbeddingResult]:
+        return await asyncio.to_thread(self._invoke, sentences)
+
+    async def stream(self, sentences: List[str]) -> List[EmbeddingResult]:
         raise NotImplementedError(f"{self.__class__.__name__} does not implement `stream` method")
